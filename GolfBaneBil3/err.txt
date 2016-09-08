@@ -1,0 +1,10 @@
+java.lang.IllegalArgumentException: Invalid sensor mode
+	at lejos.hardware.sensor.UARTSensor.<init>(UARTSensor.java:62)
+	at lejos.hardware.sensor.EV3UltrasonicSensor.<init>(EV3UltrasonicSensor.java:75)
+	at GolfBaneBil3.main(GolfBaneBil3.java:38)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:57)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:606)
+	at lejos.internal.ev3.EV3Wrapper.invokeClass(EV3Wrapper.java:62)
+	at lejos.internal.ev3.EV3Wrapper.main(EV3Wrapper.java:46)
