@@ -108,12 +108,15 @@ class MotorControl {
 	RegulatedMotor xMotor, yMotor;
 	SampleProvider trykksensor;
 	float[] trykkSample;
+	int yDistance;
 
-	public MotorControl(RegulatedMotor xMotor, RegulatedMotor yMotor, String resetSensor) {
+	public MotorControl(RegulatedMotor xMotor, RegulatedMotor yMotor, String resetSensor, int yDistance) {
 		this.xMotor = xMotor;
 		this.yMotor = yMotor;
 		xMotor.setSpeed(800);
 		yMotor.setSpeed(800);
+		
+		this.yDistance = yDistance;
 		
 		Brick brick = BrickFinder.getDefault();
 		Port s1 = brick.getPort(resetSensor); 
@@ -126,7 +129,7 @@ class MotorControl {
 	}
 	
 	public void yPlus() {
-		yMotor.rotate(-500); // 10 mm
+		yMotor.rotate(-250); // 10 mm
 	}
 
 	public int getX() {
@@ -144,12 +147,18 @@ class MotorControl {
 			trykksensor.fetchSample(trykkSample, 0);
 		}
 		stopX();
+		Delay.msDelay(100);
 		resetDistanceX();
 	}
 	
 	public void setSpeedX(int speed) {
-		xMotor.setSpeed(speed);
-		xMotor.forward();
+		if (speed >= 0) {
+			xMotor.setSpeed(speed);
+			xMotor.forward();
+		} else {
+			xMotor.setSpeed(-speed);
+			xMotor.backward();
+		}
 	}
 	
 	public void stopX(){
@@ -162,6 +171,18 @@ class MotorControl {
 
 	public void resetDistanceX() {
 		xMotor.resetTachoCount();
+	}
+	
+	public void moveToPosX(int pos) {
+		xMotor.setSpeed(200);
+		while (getDistanceX() != pos) {
+			if (getDistanceX() > pos) {
+				xMotor.backward();
+			} else {
+				xMotor.forward();
+			}
+		}
+		xMotor.stop();
 	}
 }
 
@@ -178,10 +199,10 @@ class ImageArray {
 	public void scanPixel(int x, int y, int[] rgb) {
 		for (int i = 0;i < 3;i++) bilde[x][y][i] = rgb[i];
 			
-		System.out.println(rgb[0] + ", " + rgb[1] + ", " + rgb[2]);
+		//System.out.println(rgb[0] + ", " + rgb[1] + ", " + rgb[2]);
 	}
 	
-	public void toFile() {
+	public void toFile(String name) {
 		for (int y = 0;y < bilde[0].length;y++) {
 			for(int x = 0; x < bilde.length; x++) {
 				// for (int c = 0; c < 3; c++) {
@@ -193,7 +214,7 @@ class ImageArray {
 		}
 		
 		try {
-			File outputfile = new File("saved.png");
+			File outputfile = new File(name + ".png");
 			ImageIO.write(img, "png", outputfile);
 		} catch (IOException e) {
 			
@@ -205,8 +226,12 @@ class Printer {
 
 	public static void main(String[] args) {
 
+		double widthMM = 150, heightMM = 150, dpi = 40;
+		
+		int width = (int) (widthMM * dpi /25.4), height =  (int) (heightMM * dpi /25.4), distanceX = (int) (200 / dpi); //dpi 
+	
 		LightSensors light = new LightSensors("S4");
-		MotorControl motor = new MotorControl(Motor.D, Motor.A, "S1");
+		MotorControl motor = new MotorControl(Motor.D, Motor.A, "S1", (int)(3500 / dpi));
 		Screen screen = new Screen();
 		BrickKeys keys = new BrickKeys();
 		int[] rgb = new int[3];
@@ -222,10 +247,10 @@ class Printer {
 			// Delay.msDelay(500);
 		// }
 		
-		int width = 100, height = 80, distanceX = 15;
+		
 		
 		ImageArray image = new ImageArray(width, height);
-		ImageArray image2 = new ImageArray(width, height);
+		//ImageArray image2 = new ImageArray(width, height);
 		
 		motor.resetX();
 		for (int y = 0;y < height;y++) {
@@ -241,14 +266,30 @@ class Printer {
 				}
 				
 			}
-			if (if y ) {
-				
-			} else {
-				motor.resetX();
+			
+			if (y < height - 1) {
+				y++;
+				motor.moveToPosX(width*distanceX);
 				motor.yPlus();
+				//Delay.msDelay(250);
+				motor.setSpeedX(-900);
+				for (int x = width -1;x >= 0;) {
+					if (x * distanceX - 26 >= motor.getDistanceX()) {
+						image.scanPixel(x, y, light.getPixel());
+						x--;
+					}
+					
+				}
+				//motor.resetDistanceX();
 			}
+			
+			motor.resetX();
+			//motor.resetDistanceX();
+			motor.yPlus();
+			
 		}
 
-		image.toFile();
+		image.toFile("saved");
+		//image2.toFile("saved1");
 	}
 }
