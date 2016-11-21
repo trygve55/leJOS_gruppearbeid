@@ -9,90 +9,50 @@ import lejos.hardware.Key;
 import lejos.hardware.lcd.*;
 import lejos.robotics.SampleProvider;
 import lejos.hardware.sensor.*;
-import lejos.hardware.sensor.SensorModes;
 import lejos.robotics.SampleProvider;
 import lejos.utility.Delay;
 import lejos.robotics.filter.MeanFilter;
 
-//image
+//Imports for managing images
 import java.awt.image.BufferedImage;
 import java.awt.Image;
 import java.io.*;
 import javax.imageio.*;
 import java.awt.Color;
 
-//server
+//Imports for socks server
 import java.net.*;
 
 class LightSensors {
-	float leftSample, rightSample;
-	float rightLightThreshold, leftLightThreshold;
+	EV3ColorSensor colorSensor;
+	SampleProvider colorReader;
+	float[] colorSample;
 
-	EV3ColorSensor fargeSensorR, fargeSensorL;
-	SampleProvider fargeLeserR, fargeLeserL;
-	float[] fargeSampleR, fargeSampleL;
-
+	/**
+	Constructor to make light sensor control object.
+	*/
 	public LightSensors(String rightSensorPort) {
 		Brick brick = BrickFinder.getDefault();
-		Screen screen = new Screen();
 		//laster sensorer
-		screen.printClear("Laster sensorer", 0, 1);
 
 		Port rightSensor = brick.getPort(rightSensorPort);
 
-		this.fargeSensorR = new EV3ColorSensor(rightSensor);
-		this.fargeLeserR = fargeSensorR.getRGBMode();
-		this.fargeSampleR = new float[fargeLeserR.sampleSize()];
+		this.colorSensor = new EV3ColorSensor(rightSensor);
+		this.colorReader = colorSensor.getRGBMode();
+		this.colorSample = new float[colorReader.sampleSize()];
 	}
 
+	/**
+	Returns RGB color values from EV3-color sensor.
+	The format is an array with int values from 0 to 255 {red, green, blue}.
+	*/
 	public int[] getPixel() {
 		int[] rgb = new int[3];
-		fargeLeserR.fetchSample(fargeSampleR, 0);
-		rgb[0] = (int) (fargeSampleR[0] * 255 * 2.0);
-		rgb[1] = (int) (fargeSampleR[1] * 255 * 2.1);
-		rgb[2] = (int) (fargeSampleR[2] * 255 * 2.4);
+		colorReader.fetchSample(colorSample, 0);
+		rgb[0] = (int) (colorSample[0] * 255 * 2.0);
+		rgb[1] = (int) (colorSample[1] * 255 * 2.1);
+		rgb[2] = (int) (colorSample[2] * 255 * 2.4);
 		return rgb;
-	}
-
-}
-
-class Screen {
-	public Screen() {
-		Brick brick = BrickFinder.getDefault();
-		EV3 ev3 = (EV3) BrickFinder.getLocal();
-		TextLCD lcd = ev3.getTextLCD();
-	}
-
-	public void print(String text, int x, int y) {
-		LCD.drawString(text, x, y);
-	}
-
-	public void printClear(String text, int x, int y) {
-		LCD.clear();
-		LCD.drawString(text, x, y);
-	}
-
-	public void printClear(String text) {
-		LCD.clear();
-		LCD.drawString(text, 0, 0);
-	}
-
-	public void clear() {
-		LCD.clear();
-	}
-}
-
-class BrickKeys {
-	Keys keys;
-
-	public BrickKeys() {
-		Brick brick = BrickFinder.getDefault();
-		EV3 ev3 = (EV3) BrickFinder.getLocal();
-		this.keys = ev3.getKeys();
-	}
-
-	public void waitKey() {
-		keys.waitForAnyPress();
 	}
 }
 
@@ -102,6 +62,15 @@ class MotorControl {
 	float[] trykkSample;
 	double yDistance;
 
+	/* 
+	Et samlet objekt som innholder all direkte kontroll av motorer.
+	All kontroll av motorer foregår gjennom denne klassen.
+	*/
+	
+	/**
+	
+	
+	*/
 	public MotorControl(RegulatedMotor xMotor, RegulatedMotor yMotor, String resetSensor, double yDistance) {
 		this.xMotor = xMotor;
 		this.yMotor = yMotor;
@@ -116,23 +85,17 @@ class MotorControl {
 		this.trykkSample = new float[trykksensor.sampleSize()];
 	}
 	
-	public void xPlus() {
-		xMotor.rotate(45);
-	}
-	
+	/**
+	Moves scannerhead one mm in negative Y direction(positive Y direction on scanned image).
+	*/
 	public void yPlus() {
 		yMotor.setSpeed(900);
 		yMotor.rotate((int) -yDistance);
 	}
 
-	public int getX() {
-		return xMotor.getTachoCount();
-	}
-	
-	public int getY() {
-		return yMotor.getTachoCount();
-	}
-
+	/**
+	Moves the scanner head to x position 0 and resets the tachometer when touch sensor is triggered.
+	*/
 	public void resetX() {
 		xMotor.setSpeed(800);
 		xMotor.backward();
@@ -145,6 +108,9 @@ class MotorControl {
 		resetDistanceX();
 	}
 	
+	/**
+	Runs X direction motor with speed as an argument. Automaticly translates negative speed to backwards movement.
+	*/
 	public void setSpeedX(int speed) {
 		if (speed >= 0) {
 			xMotor.setSpeed(speed);
@@ -155,35 +121,59 @@ class MotorControl {
 		}
 	}
 	
+	/**
+	Stops the X direction motor.
+	*/
 	public void stopX(){
 		xMotor.setSpeed(0);
 		xMotor.stop();
 	}
 	
+	/**
+	Returns how far the motor controlling the scanner head in X direction have moved since last reset. (In degrees clockwise).
+	*/
 	public int getDistanceX() {
 		return xMotor.getTachoCount();
 	}
 
+	/**
+	Resets the tachometer for the motor controlling the scanner head in X direction.
+	*/
 	public void resetDistanceX() {
 		xMotor.resetTachoCount();
 	}
 	
+	/**
+	Stops the motor controlling the scanner head in Y direction.
+	*/
 	public void stopY(){
 		yMotor.stop();
 	}
 	
+	/**
+	Returns how far the motor controlling the scanner head in Y direction have moved since the program started. (In degrees).
+	*/
 	public int getDistanceY() {
 		return yMotor.getTachoCount();
 	}
 	
+	/**
+	Adjust the number of degrees an mm is for the motor in Y direction.
+	*/
 	public void setYDistance(double yDistance) {
 		this.yDistance = yDistance;
 	}
 
+	/**
+	Resets the tachometer for the motor controlling the scanner head in X direction.
+	*/
 	public void resetDistanceY() {
 		yMotor.resetTachoCount();
 	}
 	
+	/**
+	Moves the scanner head to tachometer position (pos). Slows down when closing in.
+	*/
 	public void moveToPosX(int pos) {
 		xMotor.setSpeed(400);
 		while (getDistanceX() != pos) {
@@ -199,6 +189,9 @@ class MotorControl {
 		xMotor.stop();
 	}
 	
+	/**
+	Moves the scanner head (pos) mm in the Y direction. (Opposite direction of image Y.)
+	*/
 	public void moveToPosYMM(int pos) {
 		pos *= 250;
 		resetDistanceY();
@@ -220,24 +213,38 @@ class ImageArray {
 	BufferedImage img = null;
 	Color color;
 	
+	/**
+	Creates a new pixel array and BufferedImage. With size width times height pixels.
+	*/
 	public ImageArray(int width, int height) {
 		bilde = new int[width][height][3];
 		img = new BufferedImage(width, height, 1);
 	}
-	
+	/**
+	Creates a new pixel array and BufferedImage. With size 1x1 pixel.
+	*/
 	public ImageArray() {
 		bilde = new int[1][1][3];
 		img = new BufferedImage(1, 1, 1);
 	}
 	
+	/**
+	Changes pixel at pos (x, y) in pixel array to new color values (rgb).
+	*/
 	public void scanPixel(int x, int y, int[] rgb) {
 		for (int i = 0;i < 3;i++) bilde[x][y][i] = rgb[i];
 	}
 	
+	/**
+	Returns referance to pixel array.
+	*/
 	public int[][][] getArray() {
 		return bilde;
 	}
 	
+	/**
+	Converts pixel array to BufferedImage and saves it as a PNG file.
+	*/
 	public void toFile(String name) {
 		for (int y = 0;y < bilde[0].length;y++) {
 			for(int x = 0; x < bilde.length; x++) {
@@ -250,7 +257,7 @@ class ImageArray {
 			File outputfile = new File(name + ".png");
 			ImageIO.write(img, "png", outputfile);
 		} catch (IOException e) {
-			
+			System.out.println(e.toString());
 		}
 	}
 
@@ -259,20 +266,25 @@ class ImageArray {
 		bilde[x][y] = rgb;
 	}
 	
+	/**
+	Returns image width in pixels.
+	*/
 	public int getWidth() {
 		if (img != null) return img.getWidth();
 		return bilde.length;
 	}
 	
+	/**
+	Returns image height in pixels.
+	*/
 	public int getHeight() {
 		if (img != null) return img.getHeight();
 		return bilde[0].length;
 	}
 	
-	int getPixelBW(int x, int y) {
-		return (bilde[x][y][0] + bilde[x][y][1] + bilde[x][y][2])/3;
-	}
-	
+	/**
+	Returns array containing the RGB values of pixel at pos (x, y).
+	*/
 	public int[] getPixel(int x, int y) {
 		return bilde[x][y];
 	}
@@ -288,6 +300,9 @@ class Scanner {
 	ImageArray image;
 	ScannerSettings scannerSettings;
 	
+	/**
+	Sets all settings for the scanner and referances to controler objects.
+	*/
 	public Scanner(MotorControl motor, LightSensors light, Server server, ImageArray image, ScannerSettings scannerSettings, double widthMM, double heightMM, double dpi, int backOffset) {
 		this.motor = motor;
 		this.light = light;
@@ -301,6 +316,7 @@ class Scanner {
 		
 		image = new ImageArray(width, height);
 		this.image = image;
+		scannerSettings.setImage(image);
 		motor.setYDistance(distanceY);
 	}
 	
@@ -329,13 +345,17 @@ class Scanner {
 		}
 	}
 
+	/**
+	Stops the scan.
+	*/
 	public void stop() {
 		stopScan = true;
 	}
 	
+	/**
+	Starts the scanning.
+	*/
 	public ImageArray scan() {
-		Screen screen = new Screen();
-		BrickKeys keys = new BrickKeys();
 		scannerSettings.setIsScanning(true);
 		String out = "";
 		server.send("image " + image.getWidth() + " " + image.getHeight());
@@ -378,11 +398,17 @@ class Scanner {
 		return image;
 	}
 	
+	/**
+	Starts a thread that sends the pixels from the last scanned line to the client.
+	*/
 	private void sendLine(int line) {
 		ThreadSendLine tSendLine = new ThreadSendLine(line);
 		new Thread(tSendLine).start();
 	}
 	
+	/**
+	Makes a new thread and moves scanner head 1 pixel in positive image Y direction.
+	*/
 	private Thread plusY() {
 		ThreadMovePlusY tMovePlusY  = new ThreadMovePlusY();
 		Thread thread = new Thread(tMovePlusY);
@@ -390,6 +416,9 @@ class Scanner {
 		return thread;
 	}
 	
+	/**
+	Waits for all threads.
+	*/
 	private void threadWait(Thread thread) {
 		try {
 			thread.join();
@@ -399,6 +428,9 @@ class Scanner {
 	}
 }
 
+/**
+Primitive socket server
+*/
 class Server {
 	String[] bufferQueue = new String[5];;
 	ServerSocket serverSocket = null;
@@ -406,6 +438,9 @@ class Server {
 	PrintStream outStream;
 	Socket clientSocket = null;
 	
+	/**
+	Adds new line to server recieved buffer.
+	*/
 	public void queueAdd(String command) {
 		if (bufferQueue[bufferQueue.length - 1] != null) {
 			String[] newArray = new String[bufferQueue.length + 1];
@@ -423,6 +458,9 @@ class Server {
 		}	
 	}
 	
+	/**
+	Returns the oldest line in the recived buffer.
+	*/
 	public String queueGet() {
 		String returnString = bufferQueue[0];
 		String[] newArray = new String[bufferQueue.length];
@@ -433,6 +471,9 @@ class Server {
 		return returnString;
 	}
 	
+	/**
+	Returns entire queue.
+	*/
 	public String getQueue() {
 		String output = "";
 		if (bufferQueue[0] == null) output = null;
@@ -442,6 +483,9 @@ class Server {
 		return output;
 	}
 	
+	/**
+	Sends line to connected client.
+	*/
 	public void send(String message) {
 		outStream.println(message);						
 	}
@@ -469,6 +513,9 @@ class Server {
 		}
 	}
 	
+	/**
+	Sets port for socket server.
+	*/
 	public Server(int port) {
 		
 		//Input input = new Input();
@@ -499,9 +546,13 @@ class Server {
 	}
 }
 
+/**
+Object containing all control variables and scanner settings.
+*/
 class ScannerSettings {
 	int width, height, dpi, backOffset;
 	boolean stopScan, isScanning;
+	ImageArray image;
 	
 	public ScannerSettings(int width, int height, int dpi, int backOffset) {
 		this.width = width;
@@ -510,6 +561,7 @@ class ScannerSettings {
 		this.backOffset = backOffset;
 		this.stopScan = false;
 		this.isScanning = false;
+		this.image = null;
 	}
 	
 	public int getWidth() {
@@ -536,6 +588,10 @@ class ScannerSettings {
 		return isScanning;
 	}
 	
+	public ImageArray getImage() {
+		return image;
+	}
+	
 	public void setWidth(int width) {
 		this.width = width;
 	}
@@ -560,11 +616,18 @@ class ScannerSettings {
 		this.isScanning = isScanning;
 	}
 	
+	public void setImage(ImageArray image) {
+		this.image = image;
+	}
+	
 	public String toString() {
 		return "Width: " + width + " mm\nHeight: " + height + " mm\nDPI: " + dpi + "\nOffset: " + backOffset;
 	}
 }
 
+/**
+Class containing different commands.
+*/
 class Commands  {
 	
 	ScannerSettings scannerSettings;
@@ -572,6 +635,14 @@ class Commands  {
 	LightSensors light;
 	MotorControl motor;
 	ImageArray img;
+	
+	public Commands(ScannerSettings scannerSettings, Server server, LightSensors light, MotorControl motor, ImageArray img) {
+		this.scannerSettings = scannerSettings;
+		this.server = server;
+		this.light = light;
+		this.motor = motor;
+		this.img = img;		
+	}
 	
 	class ThreadCommandScanner implements Runnable{
 		ScannerSettings scannerSettings;
@@ -595,14 +666,9 @@ class Commands  {
 		}
 	}
 	
-	public Commands(ScannerSettings scannerSettings, Server server, LightSensors light, MotorControl motor, ImageArray img) {
-		this.scannerSettings = scannerSettings;
-		this.server = server;
-		this.light = light;
-		this.motor = motor;
-		this.img = img;		
-	}
-	
+	/**
+	Starts a scan in a new thread.
+	*/
 	public void scanStart() {
 		if (!scannerSettings.getIsScanning()) {
 			ThreadCommandScanner tCommandScanner = new ThreadCommandScanner(scannerSettings, server, light, motor, img);
@@ -612,48 +678,75 @@ class Commands  {
 		}
 	}
 	
+	/**
+	Stops the scan.
+	*/
 	public void scanStop() {
 		scannerSettings.setStopScan(true);
-		server.send("image stop");
+		server.send("image stop");  
 	}
 	
+	/**
+	Resends the pixel at pos (x, y)
+	*/
 	public void resend(String[] dataArgs) {
 		System.out.println("resending");
 		int x = Integer.parseInt(dataArgs[2]);
 		int y = Integer.parseInt(dataArgs[3]);
-		int[] pixel = img.getPixel(x, y);
+		int[] pixel = scannerSettings.getImage().getPixel(x, y);
 		server.send("image " + x + " " + y + " " + pixel[0] + " " + pixel[1] + " " + pixel[2]);
 		server.send("image finished");
 	}
 	
+	/**
+	Tells the client the scan has finished.
+	*/
 	public void finished() {
 		server.send("image finished");
 	}
 	
+	/**
+	Sets the height in the scannerSettings object and sends updated settings to client.
+	*/
 	public void setHeight(String[] dataArgs) {
 		scannerSettings.setHeight(Integer.parseInt(dataArgs[2]));
 		server.send(scannerSettings.toString());
 	}
 	
+	/**
+	Sets the width in the scannerSettings object and sends updated settings to client.
+	*/
 	public void setWidth(String[] dataArgs) {
 		scannerSettings.setWidth(Integer.parseInt(dataArgs[2]));
 		server.send(scannerSettings.toString());
 	}
 	
+	/**
+	Sets the DPI in the scannerSettings object and sends updated settings to client.
+	*/
 	public void setDPI(String[] dataArgs) {
 		scannerSettings.setDPI(Integer.parseInt(dataArgs[2]));
 		server.send(scannerSettings.toString());
 	}
 	
+	/**
+	Sets the offset in the scannerSettings object and sends updated settings to client.
+	*/
 	public void setOffset(String[] dataArgs) {
 		scannerSettings.setBackOffset(Integer.parseInt(dataArgs[2]));
 		server.send(scannerSettings.toString());
 	}
 	
+	/**
+	Return wrong use of command to client.
+	*/
 	public void wrongUse(String[] dataArgs) {
 		server.send("Wrong use of command: " + dataArgs[0]);
 	}
 	
+	/**
+	Moves scanner head specified mm in positive Y direction(opposite of image Y direction.).
+	*/
 	public void move(String[] dataArgs) {
 		if (dataArgs[1].matches("x")) {
 						
@@ -664,18 +757,25 @@ class Commands  {
 		}
 	}
 	
+	/**
+	Send "Unknown command" to client. 
+	*/
 	public void unknown() {
 		server.send("Unknown command");
 	}
 }
 
-class Printer {
+/**
+Main class for the program.
+*/
+public class ScannerServer {
 	public static void main(String[] args) {
 		ScannerSettings scannerSettings = new ScannerSettings(50, 50, 40, 40);
 		Server server = new Server(9999);
 		LightSensors light = new LightSensors("S4");
 		MotorControl motor = new MotorControl(Motor.D, Motor.A, "S1", 88);
 		ImageArray img = new ImageArray();
+		scannerSettings.setImage(img);
 		
 		String data = "";
 		String[] dataArgs;

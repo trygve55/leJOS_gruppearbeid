@@ -2,14 +2,14 @@ import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 
-//image
+//Imports for image
 import java.awt.image.BufferedImage;
 import java.awt.Image;
 import java.io.*;
 import javax.imageio.*;
 import java.awt.Color;
 
-//graphics
+//Imports for GUI and graphics
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Color;
@@ -22,12 +22,18 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 
+/**
+Socket client that connects to the server running on the EV3.
+*/
 class Client {
 	String[] bufferQueue = new String[5];;
 	Socket serverSocket = null;
 	DataInputStream inStream;
 	PrintStream outStream;
 	
+	/**
+	Adds new line to server recieved buffer.
+	*/
 	public void queueAdd(String command) {
 		if (bufferQueue[bufferQueue.length - 1] != null) {
 			String[] newArray = new String[bufferQueue.length + 5];
@@ -45,6 +51,9 @@ class Client {
 		}	
 	}
 	
+	/**
+	Returns the oldest line in the recived buffer.
+	*/
 	public String queueGet() {
 		String returnString = bufferQueue[0];
 		String[] newArray = new String[bufferQueue.length];
@@ -55,6 +64,9 @@ class Client {
 		return returnString;
 	}
 	
+	/**
+	Returns entire queue.
+	*/
 	public String getQueue() {
 		String output = "";
 		if (bufferQueue[0] == null) output = null;
@@ -64,6 +76,9 @@ class Client {
 		return output;
 	}
 	
+	/**
+	Sends string argument to the server running on the EV3.
+	*/
 	public void send(String message) {
 		outStream.println(message);						
 	}
@@ -91,6 +106,9 @@ class Client {
 		}
 	}
 	
+	/**
+	Sets EV3 server host and port.
+	*/
 	public Client(String host,int port) {
 		
 		Input input = new Input();
@@ -131,36 +149,17 @@ class ImageArray {
 	BufferedImage img = null;
 	int[][][] bilde;
 	
-	public ImageArray(String file) {
-		
-		try {
-			img = ImageIO.read(new File(file));
-			System.out.println("Virker");
-		} catch (IOException e) {
-			System.out.println("Virker ikke");
-		}
-		
-		System.out.println("" + img.getWidth());
-		
-		bilde = new int[img.getWidth()][img.getHeight()][3];
-		
-		for (int x = 0;x < img.getWidth();x++) {
-			for (int y = 0;y < img.getWidth();y++) {
-				int argb = img.getRGB(x, y);
-				bilde[x][y][0] = (argb >> 16) & 0xFF;
-				bilde[x][y][1] = (argb >> 8) & 0xFF;
-				bilde[x][y][2] = (argb) & 0xFF ;
-				//System.out.println(bilde[x][y][0] + " " + bilde[x][y][1] + " " + bilde[x][y][2]);
-
-			}
-		}
-	}
-		
+	/**
+	Creates a new pixel array and BufferedImage. With size width times height pixels.
+	*/
 	public ImageArray(int width, int height) {
 		this.bilde = new int[width][height][3];
 		this.img = new BufferedImage(width, height, 1);
 	}
 	
+	/**
+	Sets the color values for pixel at pos (x, y) to (r, g, b).
+	*/
 	public void setPixel(int x, int y, int r, int g, int b) {
 		bilde[x][y][0] = r;
 		bilde[x][y][1] = g;
@@ -168,24 +167,32 @@ class ImageArray {
 		
 	}
 	
+	/**
+	Returns image width in pixels.
+	*/
 	public int getWidth() {
 		if (img != null) return img.getWidth();
 		return bilde.length;
 	}
 	
+	/**
+	Returns image height in pixels.
+	*/
 	public int getHeight() {
 		if (img != null) return img.getHeight();
 		return bilde[0].length;
 	}
 	
-	int getPixelBW(int x, int y) {
-		return (bilde[x][y][0] + bilde[x][y][1] + bilde[x][y][2])/3;
-	}
-	
+	/**
+	Returns array with RGB values of pixel.
+	*/
 	public int[] getPixel(int x, int y) {
 		return bilde[x][y];
 	}
 	
+	/**
+	Returns position of missing pixel(not recived pixel). Returns (-1, -1) if none missing pixels.
+	*/ 
 	public int[] getMissingPixel() {
 		for (int y = 0;y < bilde[0].length;y++) {
 			for(int x = 0; x < bilde.length; x++) {
@@ -199,6 +206,9 @@ class ImageArray {
 		return array; 
 	}
 	
+	/**
+	Converts pixel array to BufferedImage and returns referance to BufferedImage.
+	*/
 	public BufferedImage getImage() {
 		Color color;
 		for (int y = 0;y < bilde[0].length;y++) {
@@ -213,6 +223,9 @@ class ImageArray {
 		return img;
 	}
 	
+	/**
+	Saves BufferedImage to file.
+	*/
 	public void toFile(String name) {
 		img = toBufferedImage();
 		
@@ -224,6 +237,9 @@ class ImageArray {
 		}
 	}
 	
+	/**
+	Converts pixel array to BufferedImage.
+	*/
 	public BufferedImage toBufferedImage() {
 		Color color;
 		for (int y = 0;y < bilde[0].length;y++) {
@@ -239,6 +255,9 @@ class ImageArray {
 		return img;
 	}
 	
+	/**
+	Adjusts the contrast of the pixel array.
+	*/
 	public void autoContrast() {
 		int lowest = 255, highest = 0;
 		for (int y = 0;y < bilde[0].length;y++) {
@@ -262,8 +281,14 @@ class ImageArray {
 	}
 }
 
+/**
+Input class
+*/
 class Input {
 	
+	/**
+	Gets input from user and return string of current line when the return key is pressed.
+	*/
 	public String getString(String dialog) {
 		
 		String inputString = "";
@@ -274,12 +299,18 @@ class Input {
 	}
 }
 
+/**
+Window showing the buffered image.
+*/
 class Window extends JFrame {
 	ImageArray img;
 	int width, height;
 	ImagePanel tegningen;
 	private static final long serialVersionUID = 1L;
 	
+	/**
+	Creates the new window.
+	*/
 	public Window(String tittel, ImageArray img, int width, int height) {
 		setTitle(tittel);
 		setSize(width, height);
@@ -290,15 +321,20 @@ class Window extends JFrame {
 		reDraw(img);
 	}
 	
+	/**
+	Redraws the buffered image.
+	*/
 	public void reDraw(ImageArray img) {
 		tegningen = new ImagePanel(img, width, height);
 		add(tegningen);
 		validate();
 		repaint();
 	}
-	
 }
 
+/**
+Panel containing the BufferedImage.
+*/
 class ImagePanel extends JPanel {
 	int width, height;
 	double scale;
@@ -390,7 +426,9 @@ class Commands {
 	}
 }
 
-
+/**
+Command window, shows all info and control buttons for the scanner.
+*/
 class CommandWindow extends JFrame implements ActionListener{
 	Commands commands;
 	ScannerSettings scannerSettings;
@@ -402,6 +440,9 @@ class CommandWindow extends JFrame implements ActionListener{
 	
 	private static final long serialVersionUID = 3L;
 	
+	/**
+	Creates the command window.
+	*/
 	CommandWindow(String title, Client client, Commands commands, ScannerSettings scannerSettings) {
 		super(title);
 		setLayout(new GridLayout(3, 3, 10, 10));
@@ -417,6 +458,7 @@ class CommandWindow extends JFrame implements ActionListener{
 		addLabels();
 		setVisible(true);
 	}
+	
 	
 	public void setClient(Client client) {
 		this.client = client;
@@ -458,7 +500,7 @@ class CommandWindow extends JFrame implements ActionListener{
 	
 	private String estimateTime() {
 		String text = "";
-		int totalSeconds = (int) (2.0*commands.getScanWidth()/120*commands.getScanHeight()); 
+		int totalSeconds = (int) ((2.0*commands.getScanWidth()/120)*commands.getScanHeight())*(40/commands.getScanDPI()); 
 		int seconds = totalSeconds % 60;
 		int minutes = (totalSeconds % 3600 - totalSeconds % 60)/60;
 		int hours = (totalSeconds - totalSeconds % 3600)/3600;
@@ -527,7 +569,7 @@ class CommandWindow extends JFrame implements ActionListener{
 			while (true) {
 				commandWindow.updateLabels();
 				try {
-					Thread.sleep(50);
+					Thread.sleep(100);
 				} catch (Exception e){
 					System.out.println(e);
 				}
@@ -706,7 +748,26 @@ class ScannerClient {
 						scannerSettings.setPxHeight(Integer.parseInt(dataArray[2]));
 						lineAt = 0;
 						transmissionComplete = false;
-						window = new Window("Enkel grafikk", img, 1400, 1000);
+						
+						//setting window size
+						Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+						double aspect = (double) Integer.parseInt(dataArray[2])/Integer.parseInt(dataArray[1]);
+						double width = screenSize.getWidth() - 40;
+						double height = screenSize.getHeight() - 40;
+						int windowWidth, windowHeight;
+						
+						System.out.println(width + " " + height + " " + aspect);
+						
+						if (width*aspect > height/aspect) {
+							windowWidth = (int) (height/aspect);
+							windowHeight = (int) height;
+						} else {
+							windowWidth = (int) (width);
+							windowHeight = (int) (height*aspect);
+						}
+						System.out.println(windowWidth + " " + windowHeight);
+						
+						window = new Window("Scan", img, windowWidth, windowHeight);
 						window.setVisible(true);
 						
 					} else if (dataArray.length == 6) {
