@@ -76,6 +76,8 @@ class MotorControl {
 		this.yMotor = yMotor;
 		xMotor.setSpeed(800);
 		yMotor.setSpeed(800);
+		xMotor.setAcceleration(1500);
+		yMotor.setAcceleration(6000);
 		
 		this.yDistance = yDistance;
 		
@@ -83,6 +85,7 @@ class MotorControl {
 		Port s1 = brick.getPort(resetSensor); 
 		this.trykksensor = new NXTTouchSensor(s1);
 		this.trykkSample = new float[trykksensor.sampleSize()];
+		
 	}
 	
 	/**
@@ -104,7 +107,7 @@ class MotorControl {
 			trykksensor.fetchSample(trykkSample, 0);
 		}
 		stopX();
-		Delay.msDelay(100);
+		//Delay.msDelay(300);
 		resetDistanceX();
 	}
 	
@@ -362,7 +365,6 @@ class Scanner {
 		motor.resetX();
 		for (int y = 0;y < height && !scannerSettings.getStopScan();y++) {	
 			motor.setSpeedX(800);
-			
 			for (int x = 0;x < width;) {
 				if ((x * distanceX) <= motor.getDistanceX()) {
 					image.scanPixel(x, y, light.getPixel());

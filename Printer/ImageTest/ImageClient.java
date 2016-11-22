@@ -157,6 +157,55 @@ class ImageArray {
 		this.img = new BufferedImage(width, height, 1);
 	}
 	
+	public ImageArray(String file) {
+		
+		try {
+			img = ImageIO.read(new File(file));
+			System.out.println("Virker");
+		} catch (IOException e) {
+			System.out.println("Virker ikke");
+		}
+		
+		System.out.println(img.getWidth()+" " +img.getHeight());
+		
+		bilde = new int[img.getWidth()][img.getHeight()][3];
+		
+		for (int y = 0;y < img.getHeight();y++) {
+			for (int x = 0;x < img.getWidth();x++) {
+				//System.out.println(x + " " + y);
+				int argb = img.getRGB(x, y);
+				bilde[x][y][0] = (argb >> 16) & 0xFF;
+				bilde[x][y][1] = (argb >> 8) & 0xFF;
+				bilde[x][y][2] = (argb) & 0xFF ;
+				
+				//System.out.println(bilde[x][y][0] + " " + bilde[x][y][1] + " " + bilde[x][y][2]);
+			}
+			System.out.println("Line: " + y);
+		}
+	}
+	
+	public void fixImage(int i) {
+		int[][][] newArray = new int[img.getWidth()][img.getHeight()][3];
+		
+		for (int y = 0; y < bilde[0].length;y++) {
+			for (int x = 0; x < bilde.length;x++) {
+				for (int c = 0; c < 3;c++) {
+					if (y % 2== 0) {
+						newArray[x][y][c] = bilde[x][y][c];
+					} else {
+						try {
+							newArray[x][y][c] = bilde[x+i][y][c];
+						} catch (Exception e) {
+							//System.out.println(e);
+						}
+					}
+				}
+			}
+		}
+		
+		this.bilde = newArray;
+	}
+	
 	/**
 	Sets the color values for pixel at pos (x, y) to (r, g, b).
 	*/
@@ -296,6 +345,35 @@ class Input {
 		inputString = sc.nextLine();
 		
 		return inputString;
+	}
+	
+	public int getInt(String dialog, int minimum, int maksimum) {
+		
+		int inputTall = 0;
+		boolean noExit = true;
+		
+		while (noExit) {
+			System.out.println(dialog);
+			Scanner sc = new Scanner(System.in);
+			
+			try {
+    			inputTall = sc.nextInt();
+			} catch (Exception e) {
+				System.out.println("ikke int");
+				continue;
+			}
+			
+			if (inputTall < minimum) {
+				System.out.println("Tallet kan ikke vaere lavere en " + minimum + "!");
+				continue;
+			} else if (inputTall > maksimum) {
+				System.out.println("Tallet kan ikke vaere hoyere en " + maksimum + "!");
+				continue;
+			} else {
+				noExit = false;
+			}
+		}
+		return inputTall;
 	}
 }
 
@@ -672,12 +750,12 @@ class ScannerSettings {
 	}
 }
 
-class ScannerClient {
+class ImageClient {
 	ImageArray img;
 	Window window;
 	ScannerSettings scannerSettings;
 	
-	public ScannerClient(ScannerSettings scannerSettings) {
+	public ImageClient(ScannerSettings scannerSettings) {
 		this.scannerSettings = scannerSettings;
 	}
 	
@@ -817,24 +895,15 @@ class ScannerClient {
 	
 	public static void main(String[] args) {
 		Input input = new Input();
-		ScannerSettings scannerSettings = new ScannerSettings(50, 50, 40, 40);
 		
+		ImageArray img = new ImageArray("saved.png");
 		
-		Client client = null;
-		String data = "";
-		
-		Commands commands = new Commands(client, scannerSettings);
-		CommandWindow commandWindow = new CommandWindow("Control", client, commands, scannerSettings);
-		
-		client = new Client("10.0.1.1",9999);
-		scannerSettings.setConnected(true);
-		commandWindow.setClient(client);
-		
-		ScannerClient thread = new ScannerClient(scannerSettings);
-		thread.threadStarter(client);
+		Window window = new Window("Scan", img, 800, 600);
+		window.setVisible(true);
 		
 		while (true) {
-			client.send(input.getString(""));
+			img.fixImage(input.getInt("offset", -50, 50));
+			window.reDraw(img);
 		}
 	}
 }
