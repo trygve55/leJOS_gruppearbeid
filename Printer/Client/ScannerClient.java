@@ -279,6 +279,31 @@ class ImageArray {
 			}
 		}
 	}
+	
+	/**
+	Offsets every odd line by (i) pixels).
+	*/
+	public void fixImageOffset(int i) {
+		int[][][] newArray = new int[img.getWidth()][img.getHeight()][3];
+		
+		for (int y = 0; y < bilde[0].length;y++) {
+			for (int x = 0; x < bilde.length;x++) {
+				for (int c = 0; c < 3;c++) {
+					if (y % 2== 0) {
+						newArray[x][y][c] = bilde[x][y][c];
+					} else {
+						try {
+							newArray[x][y][c] = bilde[x+i][y][c];
+						} catch (Exception e) {
+							newArray[x][y][c] = ((i > 0) ? bilde[img.getWidth() - 1][y][c] : bilde[0][y][c]);
+						}
+					}
+				}
+			}
+		}
+		
+		this.bilde = newArray;
+	}
 }
 
 /**
@@ -329,6 +354,29 @@ class Window extends JFrame {
 		add(tegningen);
 		validate();
 		repaint();
+	}
+	
+	/**
+	Runs ImageArray.autoContrast() and redraws the image.
+	*/
+	public void autoContrast() {
+		img.autoContrast();
+		reDraw(img);
+	}
+	
+	/**
+	Runs ImageArray.toFile() and saves the image to a PNG file.
+	*/
+	public void saveImage() {
+		img.toFile("saved");
+	}
+	
+	/**
+	Runs ImageArray.fixImageOffset() and redraws the image.
+	*/
+	public void imageOffset(int offset) {
+		img.fixImageOffset(offset);
+		reDraw(img);
 	}
 }
 
@@ -434,7 +482,7 @@ class CommandWindow extends JFrame implements ActionListener{
 	ScannerSettings scannerSettings;
 	Client client;
 	
-	JButton buttonWidth, buttonHeight, buttonDPI, buttonStartScan, buttonStopScan, buttonOffset;
+	JButton buttonWidth, buttonHeight, buttonDPI, buttonStartScan, buttonStopScan, buttonOffset, buttonImageSave, buttonImageOffset, buttonImageAutoContrast;
 	TextField textWidth = new TextField(10);
 	JLabel labelScannerSettings, labelImageInfo;
 	
@@ -445,7 +493,7 @@ class CommandWindow extends JFrame implements ActionListener{
 	*/
 	CommandWindow(String title, Client client, Commands commands, ScannerSettings scannerSettings) {
 		super(title);
-		setLayout(new GridLayout(3, 3, 10, 10));
+		setLayout(new GridLayout(4, 3, 10, 10));
 		setSize(500, 400);
 		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);   
@@ -472,6 +520,9 @@ class CommandWindow extends JFrame implements ActionListener{
 		buttonOffset = addButton("Set backOffset", "scan offset ", "Set Backoffset(deg): ");
 		buttonStartScan = addButton("Start scan", "scan start");
 		buttonStartScan = addButton("Stop scan", "scan stop");
+		buttonImageAutoContrast = addButton("Autocontrast");
+		buttonImageSave = addButton("Save Image");
+		buttonImageOffset = addButton("Image offset");
 		buttonOffset = addButton("Move Y", "move y ", "Move Y(mm): ");
 		
 	}
@@ -551,6 +602,26 @@ class CommandWindow extends JFrame implements ActionListener{
 		add(button);
 		return button; 
 	}
+	
+	private JButton addButton(String buttonText) {
+		JButton button = new JButton(buttonText);
+		button.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (e.getActionCommand().matches("Autocontrast")) {
+					scannerSettings.getWindow().autoContrast();
+					System.out.println("test1");
+				} else if (e.getActionCommand().matches("Image offset")) {
+					scannerSettings.getWindow().imageOffset(2);
+					System.out.println("test1");
+				} else if (e.getActionCommand().matches("Save Image")) {
+					scannerSettings.getWindow().saveImage();
+					System.out.println("test1");
+				}
+			}
+		});
+		add(button);
+		return button; 
+	}
 
 	
 	@Override
@@ -578,9 +649,13 @@ class CommandWindow extends JFrame implements ActionListener{
 	}
 }
 
+/**
+Control object containing all global info.
+*/
 class ScannerSettings {
 	int width, height, dpi, backOffset, pxWidth, pxHeight, lineAt;
 	boolean connected, stopScan;
+	Window window;
 	
 	public ScannerSettings(int width, int height, int dpi, int backOffset) {
 		this.width = width;
@@ -629,6 +704,10 @@ class ScannerSettings {
 		return stopScan;
 	}
 	
+	public Window getWindow() {
+		return window;
+	}
+	
 	public void setWidth(int width) {
 		this.width = width;
 		System.out.println("setting width");
@@ -662,6 +741,9 @@ class ScannerSettings {
 		this.stopScan = stopScan;
 	}
 	
+	public void setWindow(Window window) {
+		this.window = window;
+	}	
 	
 	public String toString() {
 		return "Width: " + width + "mm\nHeight: " + height + "mm\nDPI: " + dpi + "\nOffset: " + backOffset;
@@ -672,6 +754,7 @@ class ScannerSettings {
 	}
 }
 
+
 class ScannerClient {
 	ImageArray img;
 	Window window;
@@ -681,6 +764,9 @@ class ScannerClient {
 		this.scannerSettings = scannerSettings;
 	}
 	
+	/**
+	Class with thread reciving nettwork commands.
+	*/
 	class ThreadListen implements Runnable {
 		Client client;
 		
@@ -708,14 +794,13 @@ class ScannerClient {
 				}
 				
 				dataArray = data.split(" ");
-				
 							
 				if (dataArray[0].matches("image")) {
 					if (dataArray[1].matches("finished")) {
 						boolean missingPixel = false;
 						
-						for (int y = 0;y < lineAt;y++) {
-							for(int x = 0; x < img.getWidth(); x++) {
+						for (int y = 0;y < lineAt && !missingPixel;y++) {
+							for(int x = 0; x < img.getWidth() && !missingPixel; x++) {
 								int[] pixel = img.getPixel(x, y);
 								if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) {
 									System.out.println("Missing pixel: " + x + " " + y);
@@ -775,6 +860,7 @@ class ScannerClient {
 						
 						window = new Window("Scan", img, windowWidth, windowHeight);
 						window.setVisible(true);
+						scannerSettings.setWindow(window);
 						
 					} else if (dataArray.length == 6) {
 						int[] xyrgb = new int[5];
@@ -783,13 +869,14 @@ class ScannerClient {
 							xyrgb[i] = Integer.parseInt(dataArray[i + 1]);
 						}
 						
+						img.setPixel(xyrgb[0], xyrgb[1], xyrgb[2], xyrgb[3], xyrgb[4]);
+						
 						if (lineAt <= xyrgb[1]) {
 							lineAt++;
 							scannerSettings.setLineAt(lineAt);
 							System.out.println("Line " + xyrgb[1]);
 							window.reDraw(img);
 						}
-						img.setPixel(xyrgb[0], xyrgb[1], xyrgb[2], xyrgb[3], xyrgb[4]);
 					}
 				} else if (dataArray[0].matches("Width:")) {
 					scannerSettings.setWidth(Integer.parseInt(dataArray[1]));
@@ -827,6 +914,7 @@ class ScannerClient {
 		CommandWindow commandWindow = new CommandWindow("Control", client, commands, scannerSettings);
 		
 		client = new Client("10.0.1.1",9999);
+		//client = new Client("localhost",9999); //only for testing
 		scannerSettings.setConnected(true);
 		commandWindow.setClient(client);
 		

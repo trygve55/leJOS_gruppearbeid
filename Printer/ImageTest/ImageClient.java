@@ -197,6 +197,7 @@ class ImageArray {
 							newArray[x][y][c] = bilde[x+i][y][c];
 						} catch (Exception e) {
 							//System.out.println(e);
+							newArray[x][y][c] = ((i > 0) ? bilde[img.getWidth() - 1][y][c] : bilde[0][y][c]);
 						}
 					}
 				}
@@ -408,6 +409,8 @@ class Window extends JFrame {
 		validate();
 		repaint();
 	}
+	
+
 }
 
 /**
@@ -900,6 +903,8 @@ class ImageClient {
 		
 		Window window = new Window("Scan", img, 800, 600);
 		window.setVisible(true);
+		
+		String inputString = "";
 		
 		while (true) {
 			img.fixImage(input.getInt("offset", -50, 50));
