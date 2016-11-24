@@ -36,7 +36,7 @@ class Client {
 	*/
 	public void queueAdd(String command) {
 		if (bufferQueue[bufferQueue.length - 1] != null) {
-			String[] newArray = new String[bufferQueue.length + 5];
+			String[] newArray = new String[bufferQueue.length + 20];
 			for (int i = 0;i < bufferQueue.length;i++) {
 				newArray[i] = bufferQueue[i];
 			}
@@ -153,7 +153,7 @@ class ImageArray {
 	Creates a new pixel array and BufferedImage. With size width times height pixels.
 	*/
 	public ImageArray(int width, int height) {
-		this.bilde = new int[width][height][3];
+		this.bilde = new int[width][height][4];
 		this.img = new BufferedImage(width, height, 1);
 	}
 	
@@ -164,7 +164,7 @@ class ImageArray {
 		bilde[x][y][0] = r;
 		bilde[x][y][1] = g;
 		bilde[x][y][2] = b;
-		
+		bilde[x][y][3] = 1;
 	}
 	
 	/**
@@ -477,7 +477,7 @@ class Commands {
 /**
 Command window, shows all info and control buttons for the scanner.
 */
-class CommandWindow extends JFrame implements ActionListener{
+class CommandWindow extends JFrame { //implements ActionListener{
 	Commands commands;
 	ScannerSettings scannerSettings;
 	Client client;
@@ -516,7 +516,7 @@ class CommandWindow extends JFrame implements ActionListener{
 		
 		buttonWidth = addButton("Set Width", "scan width ", "Set width(mm): ");
 		buttonHeight = addButton("Set height", "scan height ", "Set height(mm): ");
-		buttonDPI = addButton("Set DPI", "scan dpi ", "Set DPI: ");
+		buttonDPI = addButton("Set PPI", "scan dpi ", "Set PPI: ");
 		buttonOffset = addButton("Set backOffset", "scan offset ", "Set Backoffset(deg): ");
 		buttonStartScan = addButton("Start scan", "scan start");
 		buttonStartScan = addButton("Stop scan", "scan stop");
@@ -527,7 +527,7 @@ class CommandWindow extends JFrame implements ActionListener{
 		
 	}
 	
-	public void addLabels() {
+	private void addLabels() {
 		labelScannerSettings = addLabel("scanner settings");
 		labelImageInfo = addLabel("image info");
 		
@@ -536,34 +536,33 @@ class CommandWindow extends JFrame implements ActionListener{
 		updateLabelScannerSettings();
 	}
 	
-	public JLabel addLabel(String title) {
+	private JLabel addLabel(String title) {
 		JLabel label = new JLabel(title);
 		add(label);
 		return label;
 	}
 	
-	public void updateLabelScannerSettings() {
+	private void updateLabelScannerSettings() {
 		String text = "<html>Width: " + commands.getScanWidth() +  " mm<br>Height: " + commands.getScanHeight() +
-		" mm<br>Resolution: " + commands.getScanDPI() + " DPI<br>Offset: " + commands.getScanOffset() + " deg<br>Estimated time: " + 
-		estimateTime() + "</html>";
+		" mm<br>Resolution: " + commands.getScanDPI() + " PPI<br>Offset: " + commands.getScanOffset() + " deg" + "</html>";
 		labelScannerSettings.setText(text);
 	}
 	
 	private String estimateTime() {
 		String text = "";
-		int totalSeconds = (int) ((2.0*commands.getScanWidth()/120)*commands.getScanHeight())*(40/commands.getScanDPI()); 
+		int totalSeconds = (int) (((double)(1.0 + ( 2.0*commands.getScanWidth()/120))*commands.getScanHeight())/((double) 40/commands.getScanDPI())); 
 		int seconds = totalSeconds % 60;
 		int minutes = (totalSeconds % 3600 - totalSeconds % 60)/60;
 		int hours = (totalSeconds - totalSeconds % 3600)/3600;
-		if (hours > 0) text += hours + " timer, ";
+		if (hours > 0) text += hours + " hours, ";
 		if (minutes > 0) text += minutes + " min, ";
-		if (seconds > 0) text += seconds + " sec";
+		text += seconds + " sec";
 		return text;
 	}
 	
 	public void updateLabelImageInfo() {
 		String text = "<html>Connected: " + scannerSettings.getConnected() + "<br>Resolution: " + scannerSettings.getPxWidth() +  "x" + scannerSettings.getPxHeight() + 
-		"px<br>Progress: line " + scannerSettings.getLineAt() + "/" + scannerSettings.getPxHeight() + "</html>";
+		"px<br>Progress: line " + scannerSettings.getLineAt() + "/" + scannerSettings.getPxHeight() + "<br>Estimated time: " + estimateTime() + "</html>";
 		labelImageInfo.setText(text);
 	}
 	
@@ -609,24 +608,15 @@ class CommandWindow extends JFrame implements ActionListener{
 			public void actionPerformed(ActionEvent e) {
 				if (e.getActionCommand().matches("Autocontrast")) {
 					scannerSettings.getWindow().autoContrast();
-					System.out.println("test1");
 				} else if (e.getActionCommand().matches("Image offset")) {
-					scannerSettings.getWindow().imageOffset(2);
-					System.out.println("test1");
+					scannerSettings.getWindow().imageOffset(Integer.parseInt(JOptionPane.showInputDialog("Velg offset:")));
 				} else if (e.getActionCommand().matches("Save Image")) {
 					scannerSettings.getWindow().saveImage();
-					System.out.println("test1");
 				}
 			}
 		});
 		add(button);
 		return button; 
-	}
-
-	
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		JOptionPane.showMessageDialog(this, "" + e);
 	}
 	
 	class ThreadLabelUpdate implements Runnable {
@@ -778,7 +768,7 @@ class ScannerClient {
 			String data = "";
 			String dataArray[] = null;
 			int lineAt = -1;
-			boolean transmissionComplete = false;
+			boolean transmissionComplete = false, drawAllRecived = false;
 			
 			while (true) {
 				try {
@@ -799,10 +789,10 @@ class ScannerClient {
 					if (dataArray[1].matches("finished")) {
 						boolean missingPixel = false;
 						
-						for (int y = 0;y < lineAt && !missingPixel;y++) {
-							for(int x = 0; x < img.getWidth() && !missingPixel; x++) {
+						for (int y = 0;y < img.getHeight();y++) {
+							for(int x = 0; x < img.getWidth(); x++) {
 								int[] pixel = img.getPixel(x, y);
-								if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) {
+								if (pixel[3] == 0) {
 									System.out.println("Missing pixel: " + x + " " + y);
 									client.send("scan resend " + x + " " + y);
 									missingPixel = true;
@@ -815,13 +805,13 @@ class ScannerClient {
 							transmissionComplete = true;
 							System.out.println("Transmission completed.");
 							
-							img.autoContrast();
+							//img.autoContrast();
 							lineAt = -1;
 							window.reDraw(img);
 							
 							String fileName = "saved";
-							img.toFile(fileName);
-							System.out.println("Image saved as: " + fileName);
+							//img.toFile(fileName);
+							//System.out.println("Image saved as: " + fileName);
 							
 						} else {
 							try {
@@ -834,11 +824,12 @@ class ScannerClient {
 						scannerSettings.setStopScan(true);
 					} else if (dataArray.length == 3) {
 						img = new ImageArray(Integer.parseInt(dataArray[1]),Integer.parseInt(dataArray[2]));
-						System.out.println("Image Dimensions: " + Integer.parseInt(dataArray[1]) + "x" + Integer.parseInt(dataArray[2]) + "px");
+						System.out.println("Image Dimensions: " + (Integer.parseInt(dataArray[1]) + 1) + "x" + (Integer.parseInt(dataArray[2]) + 1) + "px");
 						scannerSettings.setPxWidth(Integer.parseInt(dataArray[1]));
 						scannerSettings.setPxHeight(Integer.parseInt(dataArray[2]));
 						lineAt = 0;
 						transmissionComplete = false;
+						drawAllRecived = false;
 						
 						//setting window size
 						Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -865,18 +856,22 @@ class ScannerClient {
 					} else if (dataArray.length == 6) {
 						int[] xyrgb = new int[5];
 						
-						for (int i = 0;i < 5;i++) {
-							xyrgb[i] = Integer.parseInt(dataArray[i + 1]);
-						}
+						for (int i = 0;i < 5;i++) xyrgb[i] = Integer.parseInt(dataArray[i + 1]);
 						
 						img.setPixel(xyrgb[0], xyrgb[1], xyrgb[2], xyrgb[3], xyrgb[4]);
 						
-						if (lineAt <= xyrgb[1]) {
-							lineAt++;
+						if (lineAt < xyrgb[1] + 1) {
+							lineAt = xyrgb[1] + 1;
 							scannerSettings.setLineAt(lineAt);
-							System.out.println("Line " + xyrgb[1]);
-							window.reDraw(img);
 						}
+						
+						if (scannerSettings.getPxWidth() == xyrgb[0] + 1) {
+							System.out.println("Line " + lineAt);
+							window.reDraw(img);
+							if (lineAt == scannerSettings.getPxHeight()) drawAllRecived = true;
+						}
+						
+						if (drawAllRecived) window.reDraw(img);
 					}
 				} else if (dataArray[0].matches("Width:")) {
 					scannerSettings.setWidth(Integer.parseInt(dataArray[1]));

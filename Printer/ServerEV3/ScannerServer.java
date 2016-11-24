@@ -697,7 +697,7 @@ class Commands  {
 		int y = Integer.parseInt(dataArgs[3]);
 		int[] pixel = scannerSettings.getImage().getPixel(x, y);
 		server.send("image " + x + " " + y + " " + pixel[0] + " " + pixel[1] + " " + pixel[2]);
-		server.send("image finished");
+		//server.send("image finished");
 	}
 	
 	/**
